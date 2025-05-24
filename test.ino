@@ -19,8 +19,9 @@ const int STEPS_PER_REVOLUTION = 2048;
 #define STOP_BUTTON_PIN 27       // GPIO 27 cho nút dừng
 #define DHT11_PIN 4      // GPIO 4 cho DHT11
 #define SOIL_MOISTURE_PIN 34 // GPIO 34 (ADC1_6) cho độ ẩm đất
-#define LED1_PIN 15      // GPIO 15 cho LED1 (nhiệt độ > 30°C)
+#define LED1_PIN 15      // GPIO 15 cho LED1 (nhiệt độ < 25°C)
 #define LED2_PIN 25      // GPIO 25 cho LED2 (độ ẩm đất > 50%)
+#define LED3_PIN 2      // GPIO 26 cho LED3 (nhiệt độ > 30°C)
 
 // Khởi tạo đối tượng
 Stepper myStepper(STEPS_PER_REVOLUTION, IN1, IN3, IN2, IN4);
@@ -153,18 +154,21 @@ void display_and_control_task(void *pvParameters) {
     sensor_data_t sensor_data;
     bool led1_state = false;
     bool led2_state = false;
+    bool led3_state = false;
 
     pinMode(LED1_PIN, OUTPUT);
     pinMode(LED2_PIN, OUTPUT);
+    pinMode(LED3_PIN, OUTPUT);
     digitalWrite(LED1_PIN, LOW);
     digitalWrite(LED2_PIN, LOW);
+    digitalWrite(LED3_PIN, LOW);
 
     while (1) {
         // Nhận dữ liệu cảm biến
         if (xQueueReceive(sensorQueue, &sensor_data, 0) == pdTRUE) {
-            // Điều khiển LED1 (nhiệt độ > 30°C)
+            // Điều khiển LED1 (nhiệt độ < 25°C)
             if (sensor_data.temperature != -1) {
-                led1_state = (sensor_data.temperature > 30.0);
+                led1_state = (sensor_data.temperature < 25.0);
                 digitalWrite(LED1_PIN, led1_state);
                 Serial.printf("LED 1: %s (Temperature: %.1f°C)\n", 
                               led1_state ? "ON" : "OFF", sensor_data.temperature);
@@ -175,6 +179,14 @@ void display_and_control_task(void *pvParameters) {
             digitalWrite(LED2_PIN, led2_state);
             Serial.printf("LED 2: %s (Soil Moisture: %.1f%%)\n", 
                           led2_state ? "ON" : "OFF", sensor_data.soil_percentage);
+
+            // Điều khiển LED3 (nhiệt độ > 30°C)
+            if (sensor_data.temperature != -1) {
+                led3_state = (sensor_data.temperature > 30.0);
+                digitalWrite(LED3_PIN, led3_state);
+                Serial.printf("LED 3: %s (Temperature: %.1f°C)\n", 
+                              led3_state ? "ON" : "OFF", sensor_data.temperature);
+            }
 
             // Hiển thị trên LCD
             lcd.clear();
